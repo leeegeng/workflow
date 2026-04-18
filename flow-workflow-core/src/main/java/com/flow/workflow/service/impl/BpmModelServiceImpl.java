@@ -1,5 +1,7 @@
 package com.flow.workflow.service.impl;
 
+import com.flow.workflow.entity.BpmModel;
+import com.flow.workflow.mapper.BpmModelMapper;
 import com.flow.common.exception.BusinessException;
 import com.flow.common.result.Result;
 import com.flow.common.result.ResultCode;
@@ -13,6 +15,7 @@ import org.flowable.engine.repository.Model;
 import org.flowable.engine.repository.ModelQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -28,13 +31,44 @@ public class BpmModelServiceImpl implements BpmModelService {
     @Autowired
     private RepositoryService repositoryService;
 
+    @Autowired
+    private BpmModelMapper bpmModelMapper;
+
     @Override
     public Result<List<BpmModelVO>> listModels() {
         ModelQuery query = repositoryService.createModelQuery();
         List<Model> models = query.orderByCreateTime().desc().list();
 
+        // 同步缺失的扩展表记录
+        for (Model model : models) {
+            syncModelToExtTable(model);
+        }
+
         List<BpmModelVO> voList = models.stream().map(this::convertToVO).collect(Collectors.toList());
         return Result.success(voList);
+    }
+
+    /**
+     * 同步模型到扩展表
+     */
+    private void syncModelToExtTable(Model model) {
+        BpmModel bpmModel = bpmModelMapper.selectByModelKey(model.getKey());
+        if (bpmModel == null) {
+            // 检查是否已部署
+            long deploymentCount = repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionKey(model.getKey())
+                    .count();
+            
+            bpmModel = new BpmModel();
+            bpmModel.setModelId(model.getId());
+            bpmModel.setModelName(model.getName());
+            bpmModel.setModelKey(model.getKey());
+            bpmModel.setCategory(model.getCategory());
+            bpmModel.setStatus(deploymentCount > 0 ? 1 : 0);
+            bpmModelMapper.insert(bpmModel);
+            
+            log.info("同步模型到扩展表: {}, 状态: {}", model.getKey(), bpmModel.getStatus());
+        }
     }
 
     @Override
@@ -47,6 +81,7 @@ public class BpmModelServiceImpl implements BpmModelService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Result<String> createModel(BpmModelDTO modelDTO) {
         // 检查模型标识是否已存在
         Model existModel = repositoryService.createModelQuery()
@@ -56,7 +91,7 @@ public class BpmModelServiceImpl implements BpmModelService {
             throw new BusinessException("模型标识已存在");
         }
 
-        // 创建模型
+        // 创建Flowable模型
         Model model = repositoryService.newModel();
         model.setName(modelDTO.getModelName());
         model.setKey(modelDTO.getModelKey());
@@ -69,6 +104,30 @@ public class BpmModelServiceImpl implements BpmModelService {
         model.setMetaInfo(metaInfo);
 
         repositoryService.saveModel(model);
+
+        // 同步创建或更新扩展表记录
+        BpmModel existBpmModel = bpmModelMapper.selectByModelKey(modelDTO.getModelKey());
+        if (existBpmModel != null) {
+            // 已存在则更新
+            existBpmModel.setModelId(model.getId());
+            existBpmModel.setModelName(modelDTO.getModelName());
+            existBpmModel.setDescription(modelDTO.getDescription());
+            existBpmModel.setCategory(modelDTO.getCategory());
+            existBpmModel.setFormId(modelDTO.getFormId());
+            existBpmModel.setStatus(0); // 重置为草稿状态
+            bpmModelMapper.updateById(existBpmModel);
+        } else {
+            // 不存在则插入
+            BpmModel bpmModel = new BpmModel();
+            bpmModel.setModelId(model.getId());
+            bpmModel.setModelName(modelDTO.getModelName());
+            bpmModel.setModelKey(modelDTO.getModelKey());
+            bpmModel.setDescription(modelDTO.getDescription());
+            bpmModel.setCategory(modelDTO.getCategory());
+            bpmModel.setFormId(modelDTO.getFormId());
+            bpmModel.setStatus(0); // 草稿状态
+            bpmModelMapper.insert(bpmModel);
+        }
 
         log.info("创建流程模型成功: {}", modelDTO.getModelName());
         return Result.success(model.getId());
@@ -109,10 +168,17 @@ public class BpmModelServiceImpl implements BpmModelService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Result<Void> deployModel(String modelId) {
         Model model = repositoryService.getModel(modelId);
         if (model == null) {
             throw new BusinessException(ResultCode.PROCESS_DEFINITION_NOT_FOUND);
+        }
+
+        // 检查是否已部署
+        BpmModel bpmModel = bpmModelMapper.selectByModelKey(model.getKey());
+        if (bpmModel != null && bpmModel.getStatus() != null && bpmModel.getStatus() == 1) {
+            throw new BusinessException("该模型已部署，请勿重复部署");
         }
 
         // 获取BPMN XML
@@ -123,15 +189,51 @@ public class BpmModelServiceImpl implements BpmModelService {
 
         String bpmnXml = new String(bpmnBytes, StandardCharsets.UTF_8);
 
+        // 确保名称不为空
+        String deploymentName = model.getName();
+        if (deploymentName == null || deploymentName.trim().isEmpty()) {
+            deploymentName = model.getKey();
+        }
+
+        // 确保BPMN XML中的process标签有name属性
+        if (bpmnXml.contains("<process ") && !bpmnXml.contains("name=")) {
+            // 在<process标签中添加name属性
+            bpmnXml = bpmnXml.replaceFirst(
+                    "<process\\s+",
+                    "<process name=\"" + deploymentName + "\" "
+            );
+        } else if (bpmnXml.contains("name=\"\"")) {
+            // 替换空的name属性
+            bpmnXml = bpmnXml.replaceFirst(
+                    "name=\"\"",
+                    "name=\"" + deploymentName + "\""
+            );
+        }
+
         // 部署流程
         Deployment deployment = repositoryService.createDeployment()
-                .name(model.getName())
+                .name(deploymentName)
                 .key(model.getKey())
                 .category(model.getCategory())
                 .addString(model.getKey() + ".bpmn20.xml", bpmnXml)
                 .deploy();
 
-        log.info("部署流程模型成功: {}, 部署ID: {}", model.getName(), deployment.getId());
+        // 更新扩展表状态为已部署
+        int updated = bpmModelMapper.updateStatusByModelId(modelId, 1);
+        if (updated == 0) {
+            // 如果更新失败，尝试插入新记录
+            if (bpmModel == null) {
+                bpmModel = new BpmModel();
+                bpmModel.setModelId(modelId);
+                bpmModel.setModelName(deploymentName);
+                bpmModel.setModelKey(model.getKey());
+                bpmModel.setCategory(model.getCategory());
+                bpmModel.setStatus(1);
+                bpmModelMapper.insert(bpmModel);
+            }
+        }
+
+        log.info("部署流程模型成功: {}, 部署ID: {}", deploymentName, deployment.getId());
         return Result.success();
     }
 
@@ -183,11 +285,14 @@ public class BpmModelServiceImpl implements BpmModelService {
             }
         }
 
-        // 检查是否已部署
-        long deploymentCount = repositoryService.createProcessDefinitionQuery()
-                .processDefinitionKey(model.getKey())
-                .count();
-        vo.setStatus(deploymentCount > 0 ? 1 : 0);
+        // 优先从扩展表获取状态
+        BpmModel bpmModel = bpmModelMapper.selectByModelKey(model.getKey());
+        if (bpmModel != null && bpmModel.getStatus() != null) {
+            vo.setStatus(bpmModel.getStatus());
+        } else {
+            // 如果没有扩展表记录，默认为草稿
+            vo.setStatus(0);
+        }
 
         return vo;
     }

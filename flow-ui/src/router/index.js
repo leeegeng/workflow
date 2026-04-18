@@ -125,6 +125,13 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
 
+  // 清除可能残留的遮罩层
+  const overlays = document.querySelectorAll('.el-overlay')
+  overlays.forEach(overlay => overlay.remove())
+  document.body.classList.remove('el-popup-parent--hidden')
+  document.body.style.overflow = ''
+  document.body.style.paddingRight = ''
+
   if (to.meta.public) {
     next()
   } else if (!userStore.token) {

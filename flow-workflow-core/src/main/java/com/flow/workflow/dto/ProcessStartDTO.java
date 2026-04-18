@@ -32,9 +32,8 @@ public class ProcessStartDTO implements Serializable {
     private String title;
 
     /**
-     * 发起人ID
+     * 发起人ID（后端自动填充）
      */
-    @NotNull(message = "发起人不能为空")
     private Long startUserId;
 
     /**

@@ -49,6 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     }
 
                     List<SimpleGrantedAuthority> authorities = permissions.stream()
+                            .filter(StringUtils::hasText)
                             .map(SimpleGrantedAuthority::new)
                             .collect(Collectors.toList());
 

@@ -60,6 +60,60 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常: ", e);
-        return Result.error(ResultCode.ERROR.getCode(), "系统繁忙，请稍后重试");
+        String message = extractErrorMessage(e);
+        return Result.error(ResultCode.ERROR.getCode(), message);
+    }
+
+    /**
+     * 提取友好的错误信息
+     */
+    private String extractErrorMessage(Exception e) {
+        String errorMessage = e.getMessage();
+        if (errorMessage == null) {
+            return "系统繁忙，请稍后重试";
+        }
+        
+        // BPMN 验证错误 - Flowable
+        if (errorMessage.contains("messageRef") || errorMessage.contains("messageExpression")) {
+            return "流程定义错误：消息开始事件必须配置 messageRef 或 messageExpression";
+        }
+        if (errorMessage.contains("flowable-executable-process") || errorMessage.contains("Validation set")) {
+            // 提取具体的验证错误
+            if (errorMessage.contains("Problem:")) {
+                int start = errorMessage.indexOf("Problem:") + 8;
+                int end = errorMessage.indexOf("]", start);
+                if (end > start) {
+                    String problem = errorMessage.substring(start, end).trim();
+                    return "流程定义验证失败：" + problem;
+                }
+            }
+            return "流程定义验证失败，请检查 BPMN 配置";
+        }
+        if (errorMessage.contains("Errors while parsing")) {
+            return "流程定义解析失败，请检查 BPMN XML 格式";
+        }
+        
+        // Flowable 流程相关错误
+        if (errorMessage.contains("does not exist") && errorMessage.contains("process")) {
+            return "流程定义不存在或已被删除";
+        }
+        if (errorMessage.contains("already exists") && errorMessage.contains("process")) {
+            return "流程定义已存在";
+        }
+        if (errorMessage.contains("suspended")) {
+            return "流程已挂起，无法执行此操作";
+        }
+        
+        // 权限相关错误
+        if (errorMessage.contains("Access is denied") || errorMessage.contains("不允许访问")) {
+            return "权限不足，请联系管理员";
+        }
+        
+        // 数据库错误
+        if (errorMessage.contains("BadSqlGrammarException") || errorMessage.contains("SQLSyntaxErrorException")) {
+            return "数据库错误，请联系管理员";
+        }
+        
+        return "系统繁忙，请稍后重试";
     }
 }

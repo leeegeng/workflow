@@ -63,6 +63,9 @@ export function batchTerminate(processInstanceIds, reason) {
     url: '/workflow/monitor/batch-terminate',
     method: 'post',
     data: processInstanceIds,
-    params: { reason }
+    params: { reason },
+    headers: {
+      'Content-Type': 'application/json'
+    }
   })
 }

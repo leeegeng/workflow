@@ -61,7 +61,12 @@ public class UserVO implements Serializable {
     private Integer status;
 
     /**
-     * 角色列表
+     * 角色ID列表
+     */
+    private List<Long> roleIds;
+
+    /**
+     * 角色名称列表
      */
     private List<String> roles;
 

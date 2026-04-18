@@ -65,23 +65,31 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
         variables.put("startUserId", startDTO.getStartUserId());
         variables.put("title", startDTO.getTitle());
 
-        // 启动流程实例
-        ProcessInstance processInstance;
-        if (startDTO.getBusinessKey() != null) {
-            processInstance = runtimeService.startProcessInstanceByKey(
-                    startDTO.getProcessDefinitionKey(),
-                    startDTO.getBusinessKey(),
-                    variables
-            );
-        } else {
-            processInstance = runtimeService.startProcessInstanceByKey(
-                    startDTO.getProcessDefinitionKey(),
-                    variables
-            );
-        }
+        // 设置当前用户（用于记录发起人）
+        String authenticatedUserId = String.valueOf(startDTO.getStartUserId());
+        org.flowable.common.engine.impl.identity.Authentication.setAuthenticatedUserId(authenticatedUserId);
 
-        log.info("启动流程实例成功: {}, 实例ID: {}", processDefinition.getName(), processInstance.getId());
-        return Result.success(processInstance.getId());
+        try {
+            // 启动流程实例
+            ProcessInstance processInstance;
+            if (startDTO.getBusinessKey() != null && !startDTO.getBusinessKey().trim().isEmpty()) {
+                processInstance = runtimeService.startProcessInstanceByKey(
+                        startDTO.getProcessDefinitionKey(),
+                        startDTO.getBusinessKey(),
+                        variables
+                );
+            } else {
+                processInstance = runtimeService.startProcessInstanceByKey(
+                        startDTO.getProcessDefinitionKey(),
+                        variables
+                );
+            }
+            log.info("启动流程实例成功: {}, 实例ID: {}", processDefinition.getName(), processInstance.getId());
+            return Result.success(processInstance.getId());
+        } finally {
+            // 清除当前用户
+            org.flowable.common.engine.impl.identity.Authentication.setAuthenticatedUserId(null);
+        }
     }
 
     @Override

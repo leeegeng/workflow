@@ -31,6 +31,10 @@ spring:
         max-idle: 8
         min-idle: 0
 
+  # Flyway配置 - 禁用
+  flyway:
+    enabled: false
+
 # MyBatis-Plus配置
 mybatis-plus:
   configuration:
@@ -46,8 +50,8 @@ mybatis-plus:
 
 # Flowable配置
 flowable:
-  # 数据库Schema更新策略 - create-drop表示每次启动重新创建表
-  database-schema-update: create-drop
+  # 数据库Schema更新策略 - true表示自动更新表结构
+  database-schema-update: true
   # 异步执行器
   async-executor-activate: false
   # 历史数据级别

@@ -26,7 +26,9 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -61,12 +63,14 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw new BusinessException(ResultCode.LOGIN_ERROR);
         }
 
-        // 生成JWT Token
-        String token = JwtUtils.generateToken(user.getId(), user.getUsername());
-
-        // 获取用户角色和权??
+        // 获取用户角色和权限
         List<String> roles = baseMapper.selectRoleCodesByUserId(user.getId());
         List<String> permissions = baseMapper.selectPermissionsByUserId(user.getId());
+        
+        // 生成JWT Token（包含权限信息）
+        Map<String, Object> extra = new HashMap<>();
+        extra.put("permissions", permissions);
+        String token = JwtUtils.generateToken(user.getId(), user.getUsername(), extra);
 
         // 构建返回对象
         LoginVO loginVO = new LoginVO();
@@ -246,9 +250,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 获取角色列表
         List<SysRole> roles = roleMapper.selectRolesByUserId(user.getId());
+        List<Long> roleIds = roles.stream()
+                .map(SysRole::getId)
+                .collect(Collectors.toList());
         List<String> roleNames = roles.stream()
                 .map(SysRole::getRoleName)
                 .collect(Collectors.toList());
+        vo.setRoleIds(roleIds);
         vo.setRoles(roleNames);
 
         return vo;

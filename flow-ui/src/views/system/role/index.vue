@@ -30,44 +30,152 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 新增/编辑对话框 -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="formRef"
+        :model="formData"
+        :rules="formRules"
+        label-width="100px"
+      >
+        <el-form-item label="角色名称" prop="roleName">
+          <el-input v-model="formData.roleName" placeholder="请输入角色名称" />
+        </el-form-item>
+        <el-form-item label="角色编码" prop="roleCode">
+          <el-input v-model="formData.roleCode" placeholder="请输入角色编码" />
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入描述" />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="formData.status">
+            <el-radio :label="1">正常</el-radio>
+            <el-radio :label="0">禁用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getRoleList, addRole, updateRole, deleteRole } from '@/api/role'
 
 const roleList = ref([])
 const loading = ref(false)
 
 const loadData = async () => {
   loading.value = true
-  // TODO: 调用角色列表API
-  setTimeout(() => {
-    roleList.value = []
+  try {
+    const res = await getRoleList()
+    if (res.code === 200) {
+      roleList.value = res.data || []
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('获取角色列表失败')
+  } finally {
     loading.value = false
-  }, 500)
+  }
+}
+
+const dialogVisible = ref(false)
+const dialogTitle = ref('')
+const isEdit = ref(false)
+const submitLoading = ref(false)
+const formRef = ref()
+
+const formData = reactive({
+  id: null,
+  roleName: '',
+  roleCode: '',
+  description: '',
+  status: 1
+})
+
+const formRules = {
+  roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
+  roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
+}
+
+const resetForm = () => {
+  formData.id = null
+  formData.roleName = ''
+  formData.roleCode = ''
+  formData.description = ''
+  formData.status = 1
 }
 
 const handleAdd = () => {
-  // TODO: 新增角色
+  isEdit.value = false
+  dialogTitle.value = '新增角色'
+  resetForm()
+  dialogVisible.value = true
 }
 
 const handleEdit = (row) => {
-  // TODO: 编辑角色
-  console.log('编辑角色', row)
+  isEdit.value = true
+  dialogTitle.value = '编辑角色'
+  resetForm()
+  Object.assign(formData, row)
+  dialogVisible.value = true
 }
 
-const handleDelete = (row) => {
-  ElMessageBox.confirm(`确定要删除角色"${row.roleName}"吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    // TODO: 删除角色
-    ElMessage.success('删除成功')
-    loadData()
-  })
+const handleSubmit = async () => {
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  submitLoading.value = true
+  try {
+    const api = isEdit.value ? updateRole : addRole
+    const res = await api(formData.id, formData)
+    if (res.code === 200) {
+      ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
+      dialogVisible.value = false
+      loadData()
+    } else {
+      ElMessage.error(res.message || '操作失败')
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('操作失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除角色"${row.roleName}"吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const res = await deleteRole(row.id)
+    if (res.code === 200) {
+      ElMessage.success('删除成功')
+      loadData()
+    } else {
+      ElMessage.error(res.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
 onMounted(() => {

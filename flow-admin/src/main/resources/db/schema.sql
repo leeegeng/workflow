@@ -90,10 +90,14 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
     user_id BIGINT NOT NULL COMMENT '用户ID',
     role_id BIGINT NOT NULL COMMENT '角色ID',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     create_by BIGINT COMMENT '创建人',
+    update_by BIGINT COMMENT '更新人',
+    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除标志（0-正常，1-已删除）',
     UNIQUE KEY uk_user_role (user_id, role_id),
     INDEX idx_user_id (user_id),
-    INDEX idx_role_id (role_id)
+    INDEX idx_role_id (role_id),
+    INDEX idx_deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
 
 -- 角色菜单关联表
@@ -102,10 +106,14 @@ CREATE TABLE IF NOT EXISTS sys_role_menu (
     role_id BIGINT NOT NULL COMMENT '角色ID',
     menu_id BIGINT NOT NULL COMMENT '菜单ID',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     create_by BIGINT COMMENT '创建人',
+    update_by BIGINT COMMENT '更新人',
+    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除标志（0-正常，1-已删除）',
     UNIQUE KEY uk_role_menu (role_id, menu_id),
     INDEX idx_role_id (role_id),
-    INDEX idx_menu_id (menu_id)
+    INDEX idx_menu_id (menu_id),
+    INDEX idx_deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色菜单关联表';
 
 -- 流程模型扩展表
@@ -128,23 +136,7 @@ CREATE TABLE IF NOT EXISTS bpm_model (
     INDEX idx_deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程模型扩展表';
 
--- 流程表单表
-CREATE TABLE IF NOT EXISTS bpm_form (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
-    form_name VARCHAR(100) NOT NULL COMMENT '表单名称',
-    form_key VARCHAR(100) NOT NULL COMMENT '表单标识',
-    description VARCHAR(500) COMMENT '表单描述',
-    form_json TEXT COMMENT '表单JSON配置',
-    status TINYINT DEFAULT 1 COMMENT '状态（0-禁用，1-正常）',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    create_by BIGINT COMMENT '创建人',
-    update_by BIGINT COMMENT '更新人',
-    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除标志',
-    UNIQUE KEY uk_form_key (form_key),
-    INDEX idx_status (status),
-    INDEX idx_deleted (deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程表单表';
+-- 流程表单表（已移动到下方完整定义）
 
 -- 流程实例扩展表
 CREATE TABLE IF NOT EXISTS bpm_process_instance_ext (
@@ -200,7 +192,7 @@ CREATE TABLE IF NOT EXISTS bpm_task_ext (
     INDEX idx_deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务扩展表';
 
--- 表单主表
+-- 流程表单表（包含category字段的完整定义）
 CREATE TABLE IF NOT EXISTS bpm_form (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
     form_name VARCHAR(100) NOT NULL COMMENT '表单名称',
@@ -218,7 +210,7 @@ CREATE TABLE IF NOT EXISTS bpm_form (
     INDEX idx_category (category),
     INDEX idx_status (status),
     INDEX idx_deleted (deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='表单主表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程表单表';
 
 -- 表单与流程模型关联表
 CREATE TABLE IF NOT EXISTS bpm_model_form (
@@ -265,18 +257,45 @@ INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, icon, path, component
 -- 系统管理
 (1, '系统管理', 0, 1, 'Setting', '/system', NULL, NULL, 1),
 (2, '用户管理', 1, 2, NULL, 'user', 'system/user/index', 'system:user:list', 1),
+(21, '用户新增', 2, 3, NULL, NULL, NULL, 'system:user:add', 1),
+(22, '用户编辑', 2, 3, NULL, NULL, NULL, 'system:user:edit', 2),
+(23, '用户删除', 2, 3, NULL, NULL, NULL, 'system:user:delete', 3),
+(24, '用户详情', 2, 3, NULL, NULL, NULL, 'system:user:detail', 4),
+(25, '重置密码', 2, 3, NULL, NULL, NULL, 'system:user:resetPwd', 5),
 (3, '角色管理', 1, 2, NULL, 'role', 'system/role/index', 'system:role:list', 2),
+(31, '角色新增', 3, 3, NULL, NULL, NULL, 'system:role:add', 1),
+(32, '角色编辑', 3, 3, NULL, NULL, NULL, 'system:role:edit', 2),
+(33, '角色删除', 3, 3, NULL, NULL, NULL, 'system:role:delete', 3),
+(34, '分配菜单', 3, 3, NULL, NULL, NULL, 'system:role:assignMenu', 4),
 (4, '菜单管理', 1, 2, NULL, 'menu', 'system/menu/index', 'system:menu:list', 3),
+(41, '菜单新增', 4, 3, NULL, NULL, NULL, 'system:menu:add', 1),
+(42, '菜单编辑', 4, 3, NULL, NULL, NULL, 'system:menu:edit', 2),
+(43, '菜单删除', 4, 3, NULL, NULL, NULL, 'system:menu:delete', 3),
 (5, '部门管理', 1, 2, NULL, 'dept', 'system/dept/index', 'system:dept:list', 4),
+(51, '部门新增', 5, 3, NULL, NULL, NULL, 'system:dept:add', 1),
+(52, '部门编辑', 5, 3, NULL, NULL, NULL, 'system:dept:edit', 2),
+(53, '部门删除', 5, 3, NULL, NULL, NULL, 'system:dept:delete', 3),
 
 -- 流程管理
 (10, '流程管理', 0, 1, 'Connection', '/workflow', NULL, NULL, 2),
 (11, '流程模型', 10, 2, NULL, 'model', 'workflow/model/index', 'workflow:model:list', 1),
+(111, '模型新增', 11, 3, NULL, NULL, NULL, 'workflow:model:add', 1),
+(112, '模型编辑', 11, 3, NULL, NULL, NULL, 'workflow:model:edit', 2),
+(113, '模型删除', 11, 3, NULL, NULL, NULL, 'workflow:model:delete', 3),
+(114, '模型部署', 11, 3, NULL, NULL, NULL, 'workflow:model:deploy', 4),
 (12, '流程定义', 10, 2, NULL, 'definition', 'workflow/definition/index', 'workflow:definition:list', 2),
+(121, '定义详情', 12, 3, NULL, NULL, NULL, 'workflow:definition:detail', 1),
+(122, '定义激活', 12, 3, NULL, NULL, NULL, 'workflow:definition:activate', 2),
+(123, '定义挂起', 12, 3, NULL, NULL, NULL, 'workflow:definition:suspend', 3),
+(124, '定义XML', 12, 3, NULL, NULL, NULL, 'workflow:definition:xml', 4),
 (13, '流程实例', 10, 2, NULL, 'instance', 'workflow/instance/index', 'workflow:instance:list', 3),
 (14, '待办任务', 10, 2, NULL, 'todo', 'workflow/todo/index', 'workflow:task:todo', 4),
 (15, '已办任务', 10, 2, NULL, 'done', 'workflow/done/index', 'workflow:task:done', 5),
-(16, '表单设计', 10, 2, NULL, 'form', 'workflow/form/index', 'workflow:form:list', 6)
+(16, '表单设计', 10, 2, NULL, 'form', 'workflow/form/index', 'workflow:form:list', 6),
+(161, '表单新增', 16, 3, NULL, NULL, NULL, 'workflow:form:add', 1),
+(162, '表单编辑', 16, 3, NULL, NULL, NULL, 'workflow:form:edit', 2),
+(163, '表单删除', 16, 3, NULL, NULL, NULL, 'workflow:form:delete', 3),
+(17, '流程监控', 10, 2, NULL, 'monitor', 'workflow/monitor/index', 'workflow:monitor:list', 7)
 
 ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
 

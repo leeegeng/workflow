@@ -6,7 +6,10 @@ import { getToken } from './auth'
 // 创建axios实例
 const request = axios.create({
   baseURL: '/api',
-  timeout: 30000
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 })
 
 // 请求拦截器

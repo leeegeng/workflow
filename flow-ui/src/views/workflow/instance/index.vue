@@ -62,11 +62,13 @@ const getStatusText = (status) => {
 
 const loadData = async () => {
   loading.value = true
-  // TODO: 调用流程实例列表API
-  setTimeout(() => {
+  try {
+    // TODO: 调用流程实例列表API
+    await new Promise(resolve => setTimeout(resolve, 500))
     instanceList.value = []
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 const handleStart = () => {

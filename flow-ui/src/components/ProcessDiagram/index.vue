@@ -11,6 +11,8 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import BpmnViewer from 'bpmn-js/lib/Viewer'
 import { getHighlightData } from '@/api/monitor'
+import { getDefinitionXml } from '@/api/definition'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   processInstanceId: {
@@ -41,11 +43,14 @@ const loadDiagram = async () => {
   loading.value = true
   try {
     // 获取流程定义XML
-    const response = await fetch(`/api/workflow/definition/${props.processDefinitionId}/xml`)
-    const xml = await response.text()
+    const res = await getDefinitionXml(props.processDefinitionId)
+    if (res.code !== 200) {
+      ElMessage.error(res.message || '获取流程定义XML失败')
+      return
+    }
 
     // 渲染流程图
-    await viewer.importXML(xml)
+    await viewer.importXML(res.data)
 
     // 获取高亮数据
     if (props.processInstanceId) {
@@ -60,6 +65,7 @@ const loadDiagram = async () => {
     canvas.zoom('fit-viewport')
   } catch (error) {
     console.error('加载流程图失败:', error)
+    ElMessage.error('加载流程图失败')
   } finally {
     loading.value = false
   }
