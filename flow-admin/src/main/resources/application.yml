@@ -1,0 +1,67 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: flow-admin
+
+  # 数据源配置
+  datasource:
+    url: jdbc:mysql://172.16.194.119:33062/flow_workflow?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: root123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+
+  # Redis配置
+  redis:
+    host: 172.16.194.119
+    port: 63790
+    password: kedacom#123
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+# MyBatis-Plus配置
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+# Flowable配置
+flowable:
+  # 数据库Schema更新策略 - create-drop表示每次启动重新创建表
+  database-schema-update: create-drop
+  # 异步执行器
+  async-executor-activate: false
+  # 历史数据级别
+  history-level: full
+  # 是否检查流程定义
+  check-process-definitions: false
+  # 邮件服务器配置（可选）
+  mail-server-host: localhost
+  mail-server-port: 1025
+  # 数据库类型
+  database-type: mysql
+
+# 日志配置
+logging:
+  level:
+    com.flow: debug
+    org.flowable: info

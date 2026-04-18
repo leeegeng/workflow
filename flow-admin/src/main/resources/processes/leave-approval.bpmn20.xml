@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowable.org/examples">
+
+  <process id="leave-approval" name="请假审批流程" isExecutable="true">
+
+    <!-- 开始节点 -->
+    <startEvent id="start" name="开始" />
+
+    <!-- 提交申请 -->
+    <userTask id="submit-leave" name="提交请假申请"
+              flowable:assignee="${startUserId}" />
+
+    <!-- 部门经理审批 -->
+    <userTask id="manager-approval" name="部门经理审批"
+              flowable:assignee="${managerId}" />
+
+    <!-- 会签：多人审批 -->
+    <userTask id="multi-approval" name="会签审批"
+              flowable:assignee="${assignee}" >
+      <multiInstanceLoopCharacteristics
+        isSequential="false"
+        flowable:collection="${assigneeList}"
+        flowable:elementVariable="assignee">
+        <completionCondition>${(approveCount / assigneeList.size()) >= passRate}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <!-- 网关：判断审批结果 -->
+    <exclusiveGateway id="approval-gateway" name="审批结果" />
+
+    <!-- 人事备案 -->
+    <userTask id="hr-record" name="人事备案"
+              flowable:assignee="${hrId}" />
+
+    <!-- 结束节点 -->
+    <endEvent id="end" name="结束" />
+
+    <!-- 流程连线 -->
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="submit-leave" />
+    <sequenceFlow id="flow2" sourceRef="submit-leave" targetRef="manager-approval" />
+    <sequenceFlow id="flow3" sourceRef="manager-approval" targetRef="multi-approval" />
+    <sequenceFlow id="flow4" sourceRef="multi-approval" targetRef="approval-gateway" />
+
+    <!-- 审批通过 -->
+    <sequenceFlow id="flow5" sourceRef="approval-gateway" targetRef="hr-record"
+                  name="通过"
+                  conditionExpression="${approveCount >= (assigneeList.size() * passRate)}" />
+
+    <!-- 审批拒绝 -->
+    <sequenceFlow id="flow6" sourceRef="approval-gateway" targetRef="end"
+                  name="拒绝"
+                  conditionExpression="${rejectCount > (assigneeList.size() * (1 - passRate))}" />
+
+    <sequenceFlow id="flow7" sourceRef="hr-record" targetRef="end" />
+
+  </process>
+
+</definitions>
