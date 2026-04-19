@@ -39,6 +39,11 @@ public interface SysRoleService extends IService<SysRole> {
     Result<Void> deleteRole(Long id);
 
     /**
+     * 获取角色菜单ID列表
+     */
+    Result<List<Long>> getRoleMenuIds(Long roleId);
+
+    /**
      * 分配角色菜单
      */
     Result<Void> assignRoleMenus(Long roleId, List<Long> menuIds);

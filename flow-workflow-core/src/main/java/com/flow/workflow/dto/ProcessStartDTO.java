@@ -16,10 +16,14 @@ public class ProcessStartDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 流程定义Key
+     * 流程定义Key（优先使用）
      */
-    @NotBlank(message = "流程定义不能为空")
     private String processDefinitionKey;
+
+    /**
+     * 流程定义ID（当key为空时使用）
+     */
+    private String processDefinitionId;
 
     /**
      * 业务主键

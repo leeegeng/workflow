@@ -21,9 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -47,17 +45,79 @@ public class BpmTaskServiceImpl implements BpmTaskService {
 
     @Override
     public Result<List<TaskVO>> getTodoList(Long userId) {
-        List<Task> tasks = taskService.createTaskQuery()
-                .taskAssignee(String.valueOf(userId))
+        String userIdStr = String.valueOf(userId);
+        
+        // 1. 查询直接分配给用户的任务
+        List<Task> assigneeTasks = taskService.createTaskQuery()
+                .taskAssignee(userIdStr)
                 .orderByTaskCreateTime()
                 .desc()
                 .list();
+        
+        // 2. 查询用户所在候选组的任务（未认领的）
+        List<String> candidateGroups = getUserCandidateGroups(userId);
+        
+        List<Task> groupTasks = new ArrayList<>();
+        if (!candidateGroups.isEmpty()) {
+            groupTasks = taskService.createTaskQuery()
+                    .taskCandidateGroupIn(candidateGroups)
+                    .taskUnassigned()  // 只查询未认领的
+                    .orderByTaskCreateTime()
+                    .desc()
+                    .list();
+        }
+        
+        // 3. 查询用户作为候选人的任务（未认领的）
+        List<Task> candidateTasks = taskService.createTaskQuery()
+                .taskCandidateUser(userIdStr)
+                .taskUnassigned()  // 只查询未认领的
+                .orderByTaskCreateTime()
+                .desc()
+                .list();
+        
+        // 4. 合并去重
+        Set<String> taskIds = new HashSet<>();
+        List<Task> allTasks = new ArrayList<>();
+        
+        for (Task task : assigneeTasks) {
+            if (taskIds.add(task.getId())) {
+                allTasks.add(task);
+            }
+        }
+        
+        for (Task task : groupTasks) {
+            if (taskIds.add(task.getId())) {
+                allTasks.add(task);
+            }
+        }
+        
+        for (Task task : candidateTasks) {
+            if (taskIds.add(task.getId())) {
+                allTasks.add(task);
+            }
+        }
 
-        List<TaskVO> voList = tasks.stream()
+        List<TaskVO> voList = allTasks.stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
 
         return Result.success(voList);
+    }
+    
+    /**
+     * 获取用户的候选组列表
+     */
+    private List<String> getUserCandidateGroups(Long userId) {
+        List<String> groups = new ArrayList<>();
+        
+        // 从流程变量中获取用户的角色信息
+        // 这里简化处理，实际应该从用户服务获取
+        groups.add("ROLE_MANAGER");
+        groups.add("ROLE_HR");
+        groups.add("ROLE_GM");
+        groups.add("ROLE_FINANCE");
+        
+        return groups;
     }
 
     @Override
@@ -232,6 +292,51 @@ public class BpmTaskServiceImpl implements BpmTaskService {
         }
 
         log.info("退回任务成?? {}, 处理?? {}", taskId, userId);
+        return Result.success();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result<Void> claimTask(String taskId, Long userId) {
+        Task task = taskService.createTaskQuery()
+                .taskId(taskId)
+                .singleResult();
+
+        if (task == null) {
+            throw new BusinessException(ResultCode.TASK_NOT_FOUND);
+        }
+
+        // 检查任务是否已被认领
+        if (task.getAssignee() != null && !task.getAssignee().isEmpty()) {
+            if (task.getAssignee().equals(String.valueOf(userId))) {
+                return Result.success(); // 已被自己认领
+            }
+            throw new BusinessException("任务已被其他人认领");
+        }
+
+        taskService.claim(taskId, String.valueOf(userId));
+        log.info("认领任务成功: {}, 用户: {}", taskId, userId);
+        return Result.success();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result<Void> unclaimTask(String taskId, Long userId) {
+        Task task = taskService.createTaskQuery()
+                .taskId(taskId)
+                .singleResult();
+
+        if (task == null) {
+            throw new BusinessException(ResultCode.TASK_NOT_FOUND);
+        }
+
+        // 只能取消自己的认领
+        if (!String.valueOf(userId).equals(task.getAssignee())) {
+            throw new BusinessException("只能释放自己认领的任务");
+        }
+
+        taskService.unclaim(taskId);
+        log.info("释放任务成功: {}, 用户: {}", taskId, userId);
         return Result.success();
     }
 

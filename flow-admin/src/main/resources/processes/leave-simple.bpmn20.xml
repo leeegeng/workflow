@@ -115,4 +115,87 @@
 
   </process>
 
+  <!-- 图形定义 -->
+  <bpmndi:BPMNDiagram xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="BPMNDiagram_leave-simple">
+    <bpmndi:BPMNPlane id="BPMNPlane_leave-simple" bpmnElement="leave-simple">
+      <!-- 开始节点 -->
+      <bpmndi:BPMNShape id="Shape_start" bpmnElement="start">
+        <dc:Bounds x="100" y="150" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <!-- 提交请假申请 -->
+      <bpmndi:BPMNShape id="Shape_submit-leave" bpmnElement="submit-leave">
+        <dc:Bounds x="200" y="130" width="120" height="80"/>
+      </bpmndi:BPMNShape>
+      <!-- 判断请假天数网关 -->
+      <bpmndi:BPMNShape id="Shape_days-gateway" bpmnElement="days-gateway">
+        <dc:Bounds x="380" y="145" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <!-- 部门经理审批 -->
+      <bpmndi:BPMNShape id="Shape_manager-approval" bpmnElement="manager-approval">
+        <dc:Bounds x="500" y="60" width="120" height="80"/>
+      </bpmndi:BPMNShape>
+      <!-- 总经理审批 -->
+      <bpmndi:BPMNShape id="Shape_gm-approval" bpmnElement="gm-approval">
+        <dc:Bounds x="500" y="200" width="120" height="80"/>
+      </bpmndi:BPMNShape>
+      <!-- 审批结果网关 -->
+      <bpmndi:BPMNShape id="Shape_result-gateway" bpmnElement="result-gateway">
+        <dc:Bounds x="700" y="145" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <!-- 人事备案 -->
+      <bpmndi:BPMNShape id="Shape_hr-record" bpmnElement="hr-record">
+        <dc:Bounds x="820" y="130" width="120" height="80"/>
+      </bpmndi:BPMNShape>
+      <!-- 审批通过结束 -->
+      <bpmndi:BPMNShape id="Shape_end-approve" bpmnElement="end-approve">
+        <dc:Bounds x="1000" y="150" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <!-- 审批拒绝结束 -->
+      <bpmndi:BPMNShape id="Shape_end-reject" bpmnElement="end-reject">
+        <dc:Bounds x="700" y="250" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <!-- 流程连线 -->
+      <bpmndi:BPMNEdge id="Edge_flow1" bpmnElement="flow1">
+        <di:waypoint x="136" y="168"/>
+        <di:waypoint x="200" y="170"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_flow2" bpmnElement="flow2">
+        <di:waypoint x="320" y="170"/>
+        <di:waypoint x="380" y="170"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_flow3" bpmnElement="flow3">
+        <di:waypoint x="405" y="145"/>
+        <di:waypoint x="405" y="100"/>
+        <di:waypoint x="500" y="100"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_flow4" bpmnElement="flow4">
+        <di:waypoint x="405" y="195"/>
+        <di:waypoint x="405" y="240"/>
+        <di:waypoint x="500" y="240"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_flow5" bpmnElement="flow5">
+        <di:waypoint x="620" y="100"/>
+        <di:waypoint x="725" y="100"/>
+        <di:waypoint x="725" y="145"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_flow6" bpmnElement="flow6">
+        <di:waypoint x="620" y="240"/>
+        <di:waypoint x="725" y="240"/>
+        <di:waypoint x="725" y="195"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_flow7" bpmnElement="flow7">
+        <di:waypoint x="750" y="170"/>
+        <di:waypoint x="820" y="170"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_flow8" bpmnElement="flow8">
+        <di:waypoint x="725" y="195"/>
+        <di:waypoint x="718" y="250"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_flow9" bpmnElement="flow9">
+        <di:waypoint x="940" y="170"/>
+        <di:waypoint x="1000" y="168"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
 </definitions>

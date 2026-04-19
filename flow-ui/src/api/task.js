@@ -68,3 +68,19 @@ export function backTask(taskId, comment) {
     params: { comment }
   })
 }
+
+// 认领任务
+export function claimTask(taskId) {
+  return request({
+    url: `/workflow/task/${taskId}/claim`,
+    method: 'post'
+  })
+}
+
+// 取消认领任务
+export function unclaimTask(taskId) {
+  return request({
+    url: `/workflow/task/${taskId}/unclaim`,
+    method: 'post'
+  })
+}

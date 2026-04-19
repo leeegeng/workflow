@@ -14,11 +14,22 @@
         <el-table-column prop="title" label="流程标题" min-width="200" />
         <el-table-column prop="startUserName" label="发起人" width="120" />
         <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="任务状态" width="100">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleProcess(row)">办理</el-button>
-            <el-button type="warning" link @click="handleDelegate(row)">委托</el-button>
-            <el-button type="danger" link @click="handleReject(row)">驳回</el-button>
+            <el-tag v-if="row.assigneeId" type="success">已认领</el-tag>
+            <el-tag v-else type="warning">待认领</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="250" fixed="right">
+          <template #default="{ row }">
+            <el-button v-if="!row.assigneeId" type="primary" link @click="handleClaim(row)">认领</el-button>
+            <template v-else-if="String(row.assigneeId) === String(currentUserId)">
+              <el-button type="success" link @click="handleProcess(row)">办理</el-button>
+              <el-button type="info" link @click="handleUnclaim(row)">释放</el-button>
+              <el-button type="warning" link @click="handleDelegate(row)">委托</el-button>
+              <el-button type="danger" link @click="handleReject(row)">驳回</el-button>
+            </template>
+            <span v-else class="text-gray">已分配给其他人</span>
           </template>
         </el-table-column>
       </el-table>
@@ -64,7 +75,11 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTodoList, completeTask, delegateTask, rejectTask } from '@/api/task'
+import { getTodoList, completeTask, delegateTask, rejectTask, claimTask, unclaimTask } from '@/api/task'
+import { useUserStore } from '@/store/user'
+
+const userStore = useUserStore()
+const currentUserId = ref(userStore.userInfo?.userId)
 
 const taskList = ref([])
 const loading = ref(false)
@@ -165,6 +180,34 @@ const handleReject = (row) => {
       console.error(error)
     }
   })
+}
+
+// 认领任务
+const handleClaim = async (row) => {
+  try {
+    const res = await claimTask(row.taskId)
+    if (res.code === 200) {
+      ElMessage.success('认领成功')
+      loadData()
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('认领失败')
+  }
+}
+
+// 释放任务
+const handleUnclaim = async (row) => {
+  try {
+    const res = await unclaimTask(row.taskId)
+    if (res.code === 200) {
+      ElMessage.success('已释放任务')
+      loadData()
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('释放失败')
+  }
 }
 
 onMounted(() => {

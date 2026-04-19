@@ -51,4 +51,14 @@ public interface BpmTaskService {
      */
     Result<Void> backTask(String taskId, Long userId, String comment);
 
+    /**
+     * 认领任务
+     */
+    Result<Void> claimTask(String taskId, Long userId);
+
+    /**
+     * 取消认领任务
+     */
+    Result<Void> unclaimTask(String taskId, Long userId);
+
 }

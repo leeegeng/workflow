@@ -288,14 +288,22 @@ INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, icon, path, component
 (122, '定义激活', 12, 3, NULL, NULL, NULL, 'workflow:definition:activate', 2),
 (123, '定义挂起', 12, 3, NULL, NULL, NULL, 'workflow:definition:suspend', 3),
 (124, '定义XML', 12, 3, NULL, NULL, NULL, 'workflow:definition:xml', 4),
+(125, '定义删除', 12, 3, NULL, NULL, NULL, 'workflow:definition:delete', 5),
 (13, '流程实例', 10, 2, NULL, 'instance', 'workflow/instance/index', 'workflow:instance:list', 3),
+(131, '流程发起', 13, 3, NULL, NULL, NULL, 'workflow:instance:start', 1),
+(132, '流程详情', 13, 3, NULL, NULL, NULL, 'workflow:instance:detail', 2),
+(133, '流程终止', 13, 3, NULL, NULL, NULL, 'workflow:instance:terminate', 3),
+(134, '流程删除', 13, 3, NULL, NULL, NULL, 'workflow:instance:delete', 4),
 (14, '待办任务', 10, 2, NULL, 'todo', 'workflow/todo/index', 'workflow:task:todo', 4),
 (15, '已办任务', 10, 2, NULL, 'done', 'workflow/done/index', 'workflow:task:done', 5),
 (16, '表单设计', 10, 2, NULL, 'form', 'workflow/form/index', 'workflow:form:list', 6),
 (161, '表单新增', 16, 3, NULL, NULL, NULL, 'workflow:form:add', 1),
 (162, '表单编辑', 16, 3, NULL, NULL, NULL, 'workflow:form:edit', 2),
 (163, '表单删除', 16, 3, NULL, NULL, NULL, 'workflow:form:delete', 3),
-(17, '流程监控', 10, 2, NULL, 'monitor', 'workflow/monitor/index', 'workflow:monitor:list', 7)
+(17, '流程监控', 10, 2, NULL, 'monitor', 'workflow/monitor/index', 'workflow:monitor:list', 7),
+(171, '监控统计', 17, 3, NULL, NULL, NULL, 'workflow:monitor:statistics', 1),
+(172, '监控详情', 17, 3, NULL, NULL, NULL, 'workflow:monitor:detail', 2),
+(173, '流程终止', 17, 3, NULL, NULL, NULL, 'workflow:monitor:terminate', 3)
 
 ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
 

@@ -68,6 +68,15 @@ public class RoleController {
     }
 
     /**
+     * 获取角色菜单
+     */
+    @GetMapping("/{id}/menus")
+    @PreAuthorize("hasAuthority('system:role:assignMenu')")
+    public Result<List<Long>> getRoleMenus(@PathVariable Long id) {
+        return roleService.getRoleMenuIds(id);
+    }
+
+    /**
      * 分配角色菜单
      */
     @PostMapping("/{id}/menus")

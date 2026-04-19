@@ -22,9 +22,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
+            <el-button type="success" link @click="handleAssignMenu(row)">分配菜单</el-button>
             <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -65,13 +66,36 @@
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 分配菜单对话框 -->
+    <el-dialog
+      v-model="menuDialogVisible"
+      title="分配菜单权限"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-tree
+        ref="menuTreeRef"
+        :data="menuTreeData"
+        :props="{ label: 'menuName', children: 'children' }"
+        node-key="id"
+        show-checkbox
+        default-expand-all
+        :default-checked-keys="checkedMenuIds"
+      />
+      <template #footer>
+        <el-button @click="menuDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="menuSubmitLoading" @click="handleSaveMenu">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getRoleList, addRole, updateRole, deleteRole } from '@/api/role'
+import { getRoleList, addRole, updateRole, deleteRole, assignRoleMenus, getRoleMenus } from '@/api/role'
+import { getMenuTree } from '@/api/menu'
 
 const roleList = ref([])
 const loading = ref(false)
@@ -175,6 +199,76 @@ const handleDelete = async (row) => {
       console.error(error)
       ElMessage.error('删除失败')
     }
+  }
+}
+
+// 菜单分配相关
+const menuDialogVisible = ref(false)
+const menuSubmitLoading = ref(false)
+const menuTreeData = ref([])
+const checkedMenuIds = ref([])
+const currentRoleId = ref(null)
+const menuTreeRef = ref()
+
+// 加载菜单树
+const loadMenuTree = async () => {
+  try {
+    const res = await getMenuTree()
+    if (res.code === 200) {
+      menuTreeData.value = res.data || []
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('获取菜单列表失败')
+  }
+}
+
+// 打开分配菜单对话框
+const handleAssignMenu = async (row) => {
+  currentRoleId.value = row.id
+  await loadMenuTree()
+  
+  // 获取角色已分配的菜单
+  try {
+    const res = await getRoleMenus(row.id)
+    if (res.code === 200) {
+      checkedMenuIds.value = res.data || []
+      menuDialogVisible.value = true
+      
+      // 等待树组件渲染完成后设置选中状态
+      nextTick(() => {
+        menuTreeRef.value?.setCheckedKeys(checkedMenuIds.value)
+      })
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('获取角色菜单失败')
+  }
+}
+
+// 保存菜单分配
+const handleSaveMenu = async () => {
+  if (!currentRoleId.value) return
+  
+  menuSubmitLoading.value = true
+  try {
+    // 获取选中的菜单ID（包括半选中的父节点）
+    const checkedKeys = menuTreeRef.value.getCheckedKeys()
+    const halfCheckedKeys = menuTreeRef.value.getHalfCheckedKeys()
+    const allMenuIds = [...checkedKeys, ...halfCheckedKeys]
+    
+    const res = await assignRoleMenus(currentRoleId.value, allMenuIds)
+    if (res.code === 200) {
+      ElMessage.success('菜单分配成功')
+      menuDialogVisible.value = false
+    } else {
+      ElMessage.error(res.message || '分配失败')
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('分配失败')
+  } finally {
+    menuSubmitLoading.value = false
   }
 }
 

@@ -35,4 +35,10 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
             "WHERE ur.user_id = #{userId} AND m.deleted = 0 AND m.status = 1")
     List<String> selectPermissionsByUserId(@Param("userId") Long userId);
 
+    /**
+     * 根据用户ID查询部门ID
+     */
+    @Select("SELECT dept_id FROM sys_user WHERE id = #{userId} AND deleted = 0")
+    Long selectDeptIdByUserId(@Param("userId") Long userId);
+
 }

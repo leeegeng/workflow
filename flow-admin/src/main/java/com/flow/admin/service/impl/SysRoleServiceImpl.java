@@ -127,6 +127,16 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     }
 
     @Override
+    public Result<List<Long>> getRoleMenuIds(Long roleId) {
+        SysRole role = getById(roleId);
+        if (role == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND);
+        }
+        List<Long> menuIds = roleMenuMapper.selectMenuIdsByRoleId(roleId);
+        return Result.success(menuIds);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public Result<Void> assignRoleMenus(Long roleId, List<Long> menuIds) {
         SysRole role = getById(roleId);

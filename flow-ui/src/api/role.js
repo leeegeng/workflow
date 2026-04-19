@@ -42,6 +42,14 @@ export function deleteRole(id) {
   })
 }
 
+// 获取角色菜单
+export function getRoleMenus(id) {
+  return request({
+    url: `/system/role/${id}/menus`,
+    method: 'get'
+  })
+}
+
 // 分配角色菜单
 export function assignRoleMenus(id, menuIds) {
   return request({

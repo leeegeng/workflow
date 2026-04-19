@@ -115,4 +115,26 @@ public class BpmTaskController {
         return taskService.backTask(taskId, securityUser.getUserId(), comment);
     }
 
+    /**
+     * 认领任务
+     */
+    @PostMapping("/{taskId}/claim")
+    public Result<Void> claim(@PathVariable String taskId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
+
+        return taskService.claimTask(taskId, securityUser.getUserId());
+    }
+
+    /**
+     * 取消认领任务
+     */
+    @PostMapping("/{taskId}/unclaim")
+    public Result<Void> unclaim(@PathVariable String taskId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
+
+        return taskService.unclaimTask(taskId, securityUser.getUserId());
+    }
+
 }

@@ -40,11 +40,28 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
 
     @Override
     public Result<String> startProcessInstance(ProcessStartDTO startDTO) {
-        // 检查流程定义是否存??
-        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
-                .processDefinitionKey(startDTO.getProcessDefinitionKey())
-                .latestVersion()
-                .singleResult();
+        // 检查流程定义
+        ProcessDefinition processDefinition = null;
+        String definitionKey = null;
+        
+        // 优先使用 processDefinitionKey
+        if (startDTO.getProcessDefinitionKey() != null && !startDTO.getProcessDefinitionKey().trim().isEmpty()) {
+            definitionKey = startDTO.getProcessDefinitionKey();
+            processDefinition = repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionKey(definitionKey)
+                    .latestVersion()
+                    .singleResult();
+        } 
+        // 其次使用 processDefinitionId
+        else if (startDTO.getProcessDefinitionId() != null && !startDTO.getProcessDefinitionId().trim().isEmpty()) {
+            String definitionId = startDTO.getProcessDefinitionId();
+            processDefinition = repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionId(definitionId)
+                    .singleResult();
+            if (processDefinition != null) {
+                definitionKey = processDefinition.getKey();
+            }
+        }
 
         if (processDefinition == null) {
             throw new BusinessException(ResultCode.PROCESS_DEFINITION_NOT_FOUND);
@@ -56,14 +73,25 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
 
         // 准备流程变量
         Map<String, Object> variables = new HashMap<>();
-        if (startDTO.getVariables() != null) {
-            variables.putAll(startDTO.getVariables());
-        }
         if (startDTO.getFormData() != null) {
             variables.put("formData", startDTO.getFormData());
         }
+        // 优先使用 DTO 中的 title，否则使用 variables 中的 title
+        if (startDTO.getTitle() != null && !startDTO.getTitle().trim().isEmpty()) {
+            variables.put("title", startDTO.getTitle());
+        } else if (startDTO.getVariables() != null && startDTO.getVariables().get("title") != null) {
+            variables.put("title", startDTO.getVariables().get("title"));
+        }
+        // 设置发起人ID（优先使用 DTO 中的）
         variables.put("startUserId", startDTO.getStartUserId());
-        variables.put("title", startDTO.getTitle());
+        // 将其他变量合并进来（排除已设置的 key）
+        if (startDTO.getVariables() != null) {
+            startDTO.getVariables().forEach((key, value) -> {
+                if (!variables.containsKey(key)) {
+                    variables.put(key, value);
+                }
+            });
+        }
 
         // 设置当前用户（用于记录发起人）
         String authenticatedUserId = String.valueOf(startDTO.getStartUserId());
@@ -74,13 +102,13 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
             ProcessInstance processInstance;
             if (startDTO.getBusinessKey() != null && !startDTO.getBusinessKey().trim().isEmpty()) {
                 processInstance = runtimeService.startProcessInstanceByKey(
-                        startDTO.getProcessDefinitionKey(),
+                        definitionKey,
                         startDTO.getBusinessKey(),
                         variables
                 );
             } else {
                 processInstance = runtimeService.startProcessInstanceByKey(
-                        startDTO.getProcessDefinitionKey(),
+                        definitionKey,
                         variables
                 );
             }
@@ -101,7 +129,7 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
                 .list();
 
         List<ProcessInstanceVO> voList = historicProcessInstances.stream()
-                .map(this::convertToVO)
+                .map(hpi -> convertToVOWithVariables(hpi, userId))
                 .collect(Collectors.toList());
 
         return Result.success(voList);
@@ -162,9 +190,9 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
     }
 
     /**
-     * 转换为VO
+     * 转换为VO（包含变量查询）
      */
-    private ProcessInstanceVO convertToVO(HistoricProcessInstance historicProcessInstance) {
+    private ProcessInstanceVO convertToVOWithVariables(HistoricProcessInstance historicProcessInstance, Long userId) {
         ProcessInstanceVO vo = new ProcessInstanceVO();
         vo.setProcessInstanceId(historicProcessInstance.getId());
         vo.setProcessDefinitionId(historicProcessInstance.getProcessDefinitionId());
@@ -175,6 +203,7 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
         vo.setEndTime(historicProcessInstance.getEndTime() != null ?
                 historicProcessInstance.getEndTime().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime() : null);
         vo.setDuration(historicProcessInstance.getDurationInMillis());
+        vo.setStartUserId(userId);
 
         // 获取流程定义名称
         ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
@@ -191,17 +220,31 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
             vo.setStatus(1); // 运行??
         }
 
-        // 获取流程变量
-        Map<String, Object> processVariables = historicProcessInstance.getProcessVariables();
-        if (processVariables != null) {
-            vo.setTitle((String) processVariables.get("title"));
-            Object startUserId = processVariables.get("startUserId");
-            if (startUserId != null) {
-                vo.setStartUserId(Long.valueOf(startUserId.toString()));
-            }
-            vo.setFormData((Map<String, Object>) processVariables.get("formData"));
+        // 单独查询流程变量
+        try {
+            Map<String, Object> variables = historyService.createHistoricVariableInstanceQuery()
+                    .processInstanceId(historicProcessInstance.getId())
+                    .list()
+                    .stream()
+                    .collect(Collectors.toMap(
+                            v -> v.getVariableName(),
+                            v -> v.getValue() != null ? v.getValue() : ""
+                    ));
+            
+            vo.setTitle((String) variables.get("title"));
+            vo.setStartUserName((String) variables.get("startUserName"));
+            vo.setFormData((Map<String, Object>) variables.get("formData"));
+        } catch (Exception e) {
+            log.warn("获取流程变量失败: {}", historicProcessInstance.getId(), e);
         }
 
         return vo;
+    }
+
+    /**
+     * 转换为VO
+     */
+    private ProcessInstanceVO convertToVO(HistoricProcessInstance historicProcessInstance) {
+        return convertToVOWithVariables(historicProcessInstance, null);
     }
 }
